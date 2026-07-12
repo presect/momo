@@ -1,0 +1,96 @@
+name: Build & Sign MSIX
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/sign-msix.yml
+      - package/**
+
+jobs:
+  build-sign:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Locate Windows SDK tools
+        id: sdk
+        shell: pwsh
+        run: |
+          $bin = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory |
+            Where-Object { $_.Name -match '^10\.' } | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $bin) { throw 'Windows 10 SDK not found' }
+          $makeappx = Join-Path $bin.FullName 'x64\makeappx.exe'
+          $signtool = Join-Path $bin.FullName 'x64\signtool.exe'
+          if (-not (Test-Path $makeappx)) { throw "makeappx.exe not found at $makeappx" }
+          if (-not (Test-Path $signtool)) { throw "signtool.exe not found at $signtool" }
+          "makeappx=$makeappx" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "signtool=$signtool" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "makeappx: $makeappx"
+          Write-Host "signtool: $signtool"
+
+      - name: Extract Publisher from AppxManifest
+        id: pub
+        shell: pwsh
+        run: |
+          $xml = [xml](Get-Content package/AppxManifest.xml -Raw)
+          $publisher = $xml.Package.Identity.Publisher
+          Write-Host "Publisher: $publisher"
+          "publisher=$publisher" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Pack MSIX (regenerates AppxBlockMap.xml, standard MSIX compression)
+        shell: pwsh
+        run: |
+          & '${{ steps.sdk.outputs.makeappx }}' pack /d package /p MaxiCoastRush-Patched.msix /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed ($LASTEXITCODE)" }
+          Get-Item MaxiCoastRush-Patched.msix | Select-Object Name, Length
+
+      - name: Generate self-signed cert
+        id: cert
+        shell: pwsh
+        run: |
+          $subject = '${{ steps.pub.outputs.publisher }}'
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject $subject `
+            -KeyUsage DigitalSignature `
+            -FriendlyName 'MaxiCoastRush Self-Signed' `
+            -CertStoreLocation 'Cert:\CurrentUser\My' `
+            -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}') `
+            -HashAlgorithm SHA256 `
+            -NotAfter (Get-Date).AddYears(2)
+          $pwdPlain = [guid]::NewGuid().ToString()
+          $pwd = ConvertTo-SecureString -String $pwdPlain -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath "$PWD\cert.pfx" -Password $pwd | Out-Null
+          Export-Certificate  -Cert $cert -FilePath "$PWD\MaxiCoastRush.cer" | Out-Null
+          "pfx_password=$pwdPlain" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Thumbprint: $($cert.Thumbprint)"
+
+      - name: Sign MSIX
+        shell: pwsh
+        run: |
+          & '${{ steps.sdk.outputs.signtool }}' sign `
+            /fd SHA256 `
+            /f cert.pfx `
+            /p '${{ steps.cert.outputs.pfx_password }}' `
+            MaxiCoastRush-Patched.msix
+          if ($LASTEXITCODE -ne 0) { throw "signtool sign failed ($LASTEXITCODE)" }
+
+      - name: Verify signature
+        shell: pwsh
+        run: |
+          & '${{ steps.sdk.outputs.signtool }}' verify /pa /v MaxiCoastRush-Patched.msix
+          if ($LASTEXITCODE -ne 0) { throw "signtool verify failed ($LASTEXITCODE)" }
+
+      - name: Upload signed MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: MaxiCoastRush-Patched-Signed
+          path: MaxiCoastRush-Patched.msix
+
+      - name: Upload public certificate
+        uses: actions/upload-artifact@v4
+        with:
+          name: MaxiCoastRush-Certificate
+          path: MaxiCoastRush.cer
