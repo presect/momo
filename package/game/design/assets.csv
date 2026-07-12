@@ -1,0 +1,28 @@
+id,role,type,description,size/ratio,style line ref,source
+can_label,player can wrap texture,texture,Maxi lemon-lime label wrap gold MAXI RUSH lettering,1:1,STYLE FORMULA v1,generate
+tile_seabed,underwater ground tile,tile,sunlit turquoise seabed sand coral pebbles,1:1,STYLE FORMULA v1,generate
+tile_beach,beach ground tile,tile,cream white beach sand wave ripples,1:1,STYLE FORMULA v1,generate
+tile_desert,desert ground tile,tile,warm amber desert sand wind ripples,1:1,STYLE FORMULA v1,generate
+spr_coral,underwater side scenery billboard,sprite,vibrant coral reef cluster sea plants,1:1 keyed #00FF00,STYLE FORMULA v1,generate
+spr_palm,beach side scenery billboard,sprite,tall tropical palm tree lush fronds,1:1 keyed #FF00FF,STYLE FORMULA v1,generate
+spr_rock,desert side scenery billboard,sprite,weathered red canyon rock formation,1:1 keyed #FF00FF,STYLE FORMULA v1,generate
+thumbnail,marketplace cover,background,can racing shoreline three worlds gold title,16:9,STYLE FORMULA v1,generate
+favicon,marketplace icon,ui,glossy can gold M burst on teal badge,1:1,STYLE FORMULA v1,generate
+sfx_pickup,pickup chime one-shot,audio,bright crystal glass chime ting,1s,-,generate
+sfx_rotten,hazard hit one-shot,audio,wet squelch splat low thud,1s,-,generate
+sfx_boost,boost ignition one-shot,audio,can crack fizz air whoosh,2s,-,generate
+sfx_finish,race finish one-shot,audio,triumphant short airhorn blast,2s,-,generate
+sfx_surf,ambient loop all biomes (filtered per biome),audio,gentle ocean waves washing on shore,8s loop,-,generate
+pickup_meshes,ice lemon mint rotten pickup models,procedural,palette-driven Three.js primitives per formula blocks 3-4,-,STYLE FORMULA v1,procedural
+sky_gradients,per-biome sky and fog colors,procedural,teal deep / golden hour / bright day gradients from formula,-,STYLE FORMULA v1,procedural
+city_env,desert town corridor facades both sides of the lane,3d model,ithappy Desert City street slice (user-purchased+exported) thinned to 22 landmark buildings,GLB 4.4MB,-(licensed asset),reference_media[user]
+dunes_env,desert world 3D environment flanking the track,3d model,ithappy Desert pack Dunes scene (user-purchased) converted FBX to GLB + LOD,GLB 420KB,-(licensed asset - style formula not applied),reference_media[user]
+spr_coral2,underwater scenery billboard variant,sprite,tall branching coral anemones kelp,1:1 keyed #00FF00,STYLE FORMULA v1,generate
+octopus_env,animated ambient swimmers in Coral Reach,3d model,ithappy Underwater pack octopus rigged+animated (user-purchased),GLB 1.6MB,-(licensed asset),reference_media[user]
+tile_necro,necropolis ground - dark stone slabs with moss,tile texture,seamless moonlit tomb pavement,1:1 seamless,STYLE FORMULA v1,generate
+fruit_pickups,collectible fruits replacing procedural pickups,3d model,user fruit pack: watermelon banana avocado mangosteen(olive-tinted hazard),GLB 474KB,-(licensed asset),reference_media[user]
+pome_pickup,boost pickup (+100 & gauge),3d model,user pomegranate scan 1626v,GLB 69KB,-(licensed asset),reference_media[user]
+lemon_pickup,oxygen pickup (+50),3d model,user Megascans lemon 324v,GLB 39KB,-(licensed asset),reference_media[user]
+apple_rotten,rotten hazard (-50) olive tint,3d model,user apple scan 540v,GLB 37KB,-(licensed asset),reference_media[user]
+fish_enemy,fast striker enemy (-200) 6x,3d model,user cute fish rigged+swim anim 3686v,GLB 265KB,-(licensed asset),reference_media[user]
+jelly_bonus,friendly drifting bonus (+300) 5x,3d model,user jellyfish rigged+pulse anim 557v,GLB 57KB,-(licensed asset),reference_media[user]
