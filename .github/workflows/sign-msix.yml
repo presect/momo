@@ -82,7 +82,27 @@ jobs:
 
           "pfx_path=$pfxPath"       | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
           "cer_path=$cerPath"       | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "thumbprint=$($cert.Thumbprint)" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
           "pfx_password=$pwdPlain"  | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Trust generated certificate on runner
+        shell: pwsh
+        run: |
+          $cerPath = '${{ steps.cert.outputs.cer_path }}'
+          $thumbprint = '${{ steps.cert.outputs.thumbprint }}'
+          if (-not (Test-Path $cerPath)) { throw "CER not found at $cerPath" }
+
+          Import-Certificate -FilePath $cerPath -CertStoreLocation 'Cert:\CurrentUser\TrustedPeople' | Out-Null
+          Import-Certificate -FilePath $cerPath -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
+
+          if (-not (Test-Path "Cert:\CurrentUser\TrustedPeople\$thumbprint")) {
+            throw "Certificate was not trusted in CurrentUser\TrustedPeople"
+          }
+          if (-not (Test-Path "Cert:\CurrentUser\Root\$thumbprint")) {
+            throw "Certificate was not trusted in CurrentUser\Root"
+          }
+
+          Write-Host "Certificate trusted for signtool verification on this runner."
 
       - name: Sign MSIX
         shell: pwsh
