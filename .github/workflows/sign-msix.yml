@@ -40,11 +40,15 @@ jobs:
           "publisher=$publisher" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Pack MSIX (regenerates AppxBlockMap.xml, standard MSIX compression)
+        id: pack
         shell: pwsh
         run: |
-          & '${{ steps.sdk.outputs.makeappx }}' pack /d package /p MaxiCoastRush-Patched.msix /o
+          $here = (Get-Location).Path
+          $msixPath = Join-Path $here 'MaxiCoastRush-Patched.msix'
+          & '${{ steps.sdk.outputs.makeappx }}' pack /d package /p $msixPath /o
           if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed ($LASTEXITCODE)" }
-          Get-Item MaxiCoastRush-Patched.msix | Select-Object Name, Length
+          Get-Item $msixPath | Select-Object Name, Length
+          "msix_path=$msixPath" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Generate self-signed cert
         id: cert
@@ -60,27 +64,40 @@ jobs:
             -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}') `
             -HashAlgorithm SHA256 `
             -NotAfter (Get-Date).AddYears(2)
+          Write-Host "Thumbprint: $($cert.Thumbprint)"
+
+          $here    = (Get-Location).Path
+          $pfxPath = Join-Path $here 'cert.pfx'
+          $cerPath = Join-Path $here 'MaxiCoastRush.cer'
+          $storeRef = "Cert:\CurrentUser\My\$($cert.Thumbprint)"
+
           $pwdPlain = [guid]::NewGuid().ToString()
           $pwd = ConvertTo-SecureString -String $pwdPlain -Force -AsPlainText
-          Export-PfxCertificate -Cert $cert -FilePath "$PWD\cert.pfx" -Password $pwd | Out-Null
-          Export-Certificate  -Cert $cert -FilePath "$PWD\MaxiCoastRush.cer" | Out-Null
-          "pfx_password=$pwdPlain" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "Thumbprint: $($cert.Thumbprint)"
+
+          Export-PfxCertificate -Cert $storeRef -FilePath $pfxPath -Password $pwd | Out-Null
+          Export-Certificate    -Cert $storeRef -FilePath $cerPath | Out-Null
+
+          if (-not (Test-Path $pfxPath)) { throw "PFX not created at $pfxPath" }
+          if (-not (Test-Path $cerPath)) { throw "CER not created at $cerPath" }
+
+          "pfx_path=$pfxPath"       | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "cer_path=$cerPath"       | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "pfx_password=$pwdPlain"  | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Sign MSIX
         shell: pwsh
         run: |
           & '${{ steps.sdk.outputs.signtool }}' sign `
             /fd SHA256 `
-            /f cert.pfx `
+            /f '${{ steps.cert.outputs.pfx_path }}' `
             /p '${{ steps.cert.outputs.pfx_password }}' `
-            MaxiCoastRush-Patched.msix
+            '${{ steps.pack.outputs.msix_path }}'
           if ($LASTEXITCODE -ne 0) { throw "signtool sign failed ($LASTEXITCODE)" }
 
       - name: Verify signature
         shell: pwsh
         run: |
-          & '${{ steps.sdk.outputs.signtool }}' verify /pa /v MaxiCoastRush-Patched.msix
+          & '${{ steps.sdk.outputs.signtool }}' verify /pa /v '${{ steps.pack.outputs.msix_path }}'
           if ($LASTEXITCODE -ne 0) { throw "signtool verify failed ($LASTEXITCODE)" }
 
       - name: Upload signed MSIX
